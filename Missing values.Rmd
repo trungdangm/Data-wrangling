@@ -1,0 +1,190 @@
+---
+title: "Dealing with missing data- Par1 : Mean imputation"
+output:
+  html_document: default
+  word_document: default
+---
+
+
+```{r}
+library(tidyverse)
+library(DataExplorer)
+library(dplyr)
+```
+
+A. Detecting missing values
+
+```{r}
+data <- read.csv(file = "https://raw.githubusercontent.com/agconti/kaggle-titanic/master/data/train.csv", header = T, sep = ",")
+```
+
+```{r}
+str(data)
+```
+
+The data contain 891 observations and 12 variables.
+Interger and numeric type : PassengerId, Survived, Pclass, Age, SibSp, Parch. Fare
+Factor type: Name, Sex, Ticket, Cabin, Embarked.
+
+Description of the data set
+PassengerID: Id of passengers
+Survived:  (0 = No; 1 = Yes)
+Pclass:  Passenger Class (1 = 1st; 2 = 2nd; 3 = 3rd)
+Name: Name
+Sex: Sex of passengers
+Age: Age
+Sibsp: Number of Siblings/Spouses Aboard
+Parch: Number of Parents/Children Aboard
+Ticket: Ticket Number
+Fare: Passenger Fare (British pound)
+Cabin:  Cabin
+Embarked: Port of Embarkation (C = Cherbourg; Q = Queenstown; S = Southampton)
+
+
+We can also plot the summary above using plot_intro function.
+
+```{r}
+plot_intro(data)
+```
+
+There are 5 discret_columns, and 7 continuous columns, corresponding to the 5 columns of factor type and to the 7 columns of numeric and interger type, repectively.
+There are 177 missing values and 714 completed rows. 
+There are 10692 observations = 891 rows * 12 varibales =  10692 
+There is 1.7% missing observations (177/10692 = 1.655%)
+complete rows :80.1% (714/891 = 80.13 %)
+
+If we want to know which column containing missing values
+
+```{r}
+plot_missing(data)
+```
+
+All the missing values are found in the column age.  In fact, 19.87 % of data in this column is missing.
+There are 892 rows. There are 19.87% * 891 = 177 missing row, in agreement with the summary above
+Other way to check that number 
+
+```{r}
+sum(is.na(data$Age))
+```
+
+If we want to see missing values for each column
+```{r}
+sapply(data,function(x)sum(is.na(x)))
+```
+
+```{r}
+data %>%
+  sapply(function(x) sum(is.na(x)))
+``` 
+
+B. Imputaion using mean
+
+One way to deal with missing values is to replace NA row by the mean value of the column.
+In this data set, we only have missing values for the age column. One way to deal with this situation is to replace the missing value by the average age. 
+As the title may be related to the age, we will calculate the average age for each group of people who have the same title. 
+As we have many titles (Mr, Ms, etc...) = many genders, we would assign the average age in function of title.
+First, we should know how many titles in this data set
+What are theses titles ? what are the average age of each of these groups ?
+First, we will create a new column that contains only the title. 
+Adding a column title into a data set
+
+How does the name column look like ?
+```{r}
+data %>% 
+  select(Name) %>% 
+  head(10)
+```
+You can see that the title is included in the name. We should remove the title and create a new conlumn containing only the title
+```{r}
+data <- data %>% 
+  mutate(Title = regmatches(Name, regexpr("[A-z]+\\.", Name)))
+```
+
+```{r}
+data %>% 
+  select(Name, Title) %>% 
+  head(10)
+```
+
+To remove title in the column name
+```{r}
+data <- data %>%
+  mutate(Name = gsub("[A-z]+\\.","",Name))
+```
+To check
+```{r}
+data %>% 
+  select(Name, Title) %>% 
+  head(10)
+```
+
+Now, we should place the column title in after the column name
+```{r}
+data <- data %>% 
+  select(PassengerId, Name, Title, Sex, Age, everything())
+```
+
+```{r}
+head(data, 10)
+```
+
+Counting the title and order the output
+```{r}
+data %>% 
+group_by (Title) %>%
+count(sort = TRUE)
+```
+
+There are 17 groups. Mr., Miss., Mrs. are the most common among titles.
+There are some umcommon titles such as:Capt, Countess, Don., Jonkheer., Lady., Mme., Ms., and Sir.
+
+Checking the number of missing rows by title
+
+```{r}
+data %>%
+  group_by(Title) %>% 
+  summarise(missing_total = sum(is.na(Age))) %>% 
+  arrange(desc(missing_total))
+``` 
+The missing values were found at corresponding rows : 119 for Mr, 36 for Miss, 17 for Mrs, 4 for Master, and 1 for Dr.
+Because there are only 5 groups that contain missing values. We will calculate the mean age of these 5 groups rather than 17 groups
+
+```{r}
+data %>%
+  filter(Title %in% c("Mr.","Miss.", "Mrs.", "Master.","Dr.")) %>% 
+  group_by(Title) %>% 
+  summarise (average = mean(Age, na.rm = TRUE))
+```
+
+Miss., 182 rows, the  average age = 21.77
+Mr., 517 rows, the  average age = 32.36
+Mrs.,125 rows, the  average age= 35.89
+Master., 40 rows,the  average age = 4.57
+
+Assign the missing values of the age column by respectable values 
+Now, we can replace missing values by the mean of corresponding groups
+```{r}
+data <- data %>% 
+  mutate(Age = case_when(Title == "Mr." & is.na(Age) ~ mean(Age[Title == "Mr."], na.rm = TRUE),
+                         Title == "Miss." & is.na(Age)~ mean(Age[Title == "Miss."], na.rm = TRUE),
+                         Title == "Mrs." & is.na(Age) ~ mean(Age[Title == "Mrs."], na.rm = TRUE),
+                         Title == "Master." & is.na(Age) ~ mean(Age[Title == "Master."], na.rm = TRUE), 
+                         Title == "Dr." & is.na(Age) ~ mean(Age[Title == "Dr."], na.rm = TRUE),
+                         TRUE ~ Age))
+```   
+         
+```{r}
+sum(is.na(data$Age))
+```
+
+Other way to replace missing value.
+
+train$Age[train$Title == "Mr." & is.na(train$Age)] <- mean(train$Age[train$Title == "Mr."], na.rm = TRUE)
+
+train$Age[train$Title == "Miss." & is.na(train$Age)] <- mean(train$Age[train$Title == "Miss."], na.rm = TRUE)
+
+train$Age[train$Title == "Mrs." & is.na(train$Age)] <- mean(train$Age[train$Title == "Mrs."], na.rm = TRUE)
+
+train$Age[train$Title == "Master." & is.na(train$Age)] <- mean(train$Age[train$Title == "Master."], na.rm = TRUE)
+
+

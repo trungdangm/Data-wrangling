@@ -1,0 +1,295 @@
+---
+title: "Dates and times with lubridate package"
+output: html_document
+---
+
+
+```{r}
+library(lubridate)
+```
+
+# 1. BASICS
+
+### 1.1. To get the current date or date-time
+
+```{r}
+today()
+```
+
+```{r}
+now()
+```
+
+## 1.2. Three ways to create a date/time:
+
+- From a string
+- From individual date-time components
+- From an existing date/time object
+
+### 1.2.1. From a string
+
+```{r}
+date_string = "2021-01-24"
+class(date_string)
+```
+```{r}
+ymd(date_string)
+```
+
+```{r}
+mdy("January 21st, 2021")
+```
+
+```{r}
+dmy("24-January-2021")
+```
+
+These functions also take unquoted numbers. This is the most concise way to create a single date/time object, as you might need when filtering date/time data. ymd() is short and unambiguous:
+
+```{r}
+ymd(20210124)
+```
+
+```{r}
+ymd(20210103)
+```
+```{r}
+ydm(20210103)
+```
+To create a date-time, add an underscore and one or more of “h”, “m”, and “s” to the name of the parsing function:
+
+```{r}
+ymd_hms("2021-01-24 23:18:59")
+```
+
+```{r}
+mdy_hm("01/24/2021 08:01")
+```
+
+### 1.2.2. From individual components
+
+```{r}
+library(tidyverse)
+library(nycflights13)
+```
+
+```{r}
+flights %>% 
+  select(year, month, day, hour, minute) %>% 
+  head(10)
+```
+To create a date/time from this sort of input, use **make_date()** for dates, or **make_datetime()** for date-times:
+
+```{r}
+flights %>% 
+  select(year, month, day) %>% 
+  mutate(departure = make_datetime(year, month, day))
+```
+### 1.2.3. From other types
+
+
+To switch between a date-time and a date
+
+```{r}
+as_datetime(today())
+```
+
+
+```{r}
+as_date(now())
+```
+
+## 1.2. To get date-time components
+
+To pull out individual parts of the date with the accessor functions 
+
+* year()
+
+* month()
+
+* mday() (day of the month)
+
+* yday() (day of the year)
+
+* wday() (day of the week)
+
+* hour()
+
+* minute()
+
+* second().
+
+```{r}
+datetime <- ymd_hms("2016-07-08 12:34:56")
+datetime 
+```
+```{r}
+year(datetime)
+month(datetime)
+mday(datetime)
+yday(datetime)
+wday(datetime)
+```
+
+
+# 2. APPLICATION
+
+##  2.1. Thanksgiving and Labor day in Canada
+
+In Canada, Thanksgiving is celebrated on the second Monday of October.
+
+To calculate when Thanksgiving will occur in 2021, we can start with the first day of 2021.
+
+```{r}
+date <- ymd("2021-01-01")
+date
+```
+
+We can then add 10 months to our date, or directly set the date to October.
+
+```{r}
+month(date) <- 10
+date
+```
+ 
+We check which day of the week October 1st is.
+
+```{r}
+wday(date, label = TRUE, abbr = FALSE)
+```
+
+The first day of October is a Friday. Therefore,  the first Monday of October will be
+
+```{r}
+date + days(3)
+```
+
+Next, we add one weeks to get to the second Monday in October, which will be Thanksgiving.
+
+```{r}
+date + weeks(1) 
+```
+
+Labour Day in Canada is celebrated on the first Monday of September and it is a federal statutory holiday
+
+```{r}
+date <- ymd("2021-01-01")
+month(date) <- 9
+wday(date, label = TRUE, abbr = FALSE) # Wednesday is the first day of September.
+date + days(5) # 
+```
+ 
+## 2.2. Los Angeles Lakers  (2008-2009 season)
+
+**Reference : Garrett Grolemund and Hadley Wickham, Journal of Statistical Software 40 (2011)**
+
+The lakers data set comes with a date variable which records the date of each game. 
+
+Using the *str()* fucntion, we see that R recognizes the *date* column as integers.
+
+```{r}
+str(lakers)
+```
+
+```{r}
+head(lakers)
+```
+To parse the date column into R as date-time objects. 
+
+The dates appear to be arranged with their year element first, followed by the month element, and
+then the day element. Therefore, the *ymd()* must be used
+
+```{r}
+lakers <- lakers %>% 
+  mutate(Date = ymd(date)) 
+```
+
+```{r}
+lakers %>% 
+  select(Date,date) %>% 
+  head(10)
+```
+
+```{r}
+qplot(Date, 0, data = lakers, colour = game_type)
+```
+
+```{r}
+lakers %>% 
+  ggplot(aes(x = wday(Date, label = TRUE, abbr = FALSE))) + 
+  geom_bar()
+```
+
+The frequency of basketball games varies throughout the week. Surprisingly, the highest number of games was observed on Tuesdays.
+The number of games on Saturday is less than 2000.
+
+
+To look at the distribution of plays throughout the game. The lakers data set lists the time that appeared on the game clock for each play. These times begin at 12:00 at the beginning of each period and then count down to 00:00, which marks the end of the period. The first two digits refer to the number of minutes left in the period. The second two digits refer to the number of seconds.
+
+The times have not been parsed as date-time data to R. It would be difficult to record the time
+data as a date-time object because the data is incomplete: a minutes and seconds element are not sufficient to identify a unique instant of time. However, we can store the minutes and seconds information as a period object,  using the *ms()* parse function.
+ 
+```{r}
+lakers$time <- ms(lakers$time)
+```
+
+Since periods have relative lengths, it is dangerous to compare them to each other. So we should next convert our periods to durations, which have exact lengths.
+ 
+```{r}
+lakers$time <- as.duration(lakers$time)
+```
+
+This allows us to directly compare different durations. It would also allow us to determine exactly when each play occurred by adding the duration to the instant the game began. (Unfortunately, the starting time for each game is not available in the data set). However, we can still calculate when in each game each play occurred. Each period of play is 12 minutes long and overtime—the 5th period—is 5 minutes long. At the start of each period, the game clock begins counting down from 12:00. So to calculate how much play time elapses before each play, we subtract the time that appears on the game clock from a duration of 12, 24, 36, 48, or 53 minutes (depending on the period of play). We now have a new duration that shows exactly how far into the game each play occurred
+
+```{r}
+lakers$time <- dminutes(c(12, 24, 36, 48, 53)[lakers$period]) - lakers$time
+```
+
+We can now plot the number of events over time within each game. We can plot the time of each event as a duration, which will display the number of seconds into the game each play occurred on the x axis,
+
+```{r}
+qplot(time, data = lakers, geom = "histogram", binwidth = 60)
+```
+
+We can also take advantage of pretty.date() to make pretty tick marks by first transforming each duration into a date-time. This helper function recognizes the most intuitive binning and labeling of date-time data, which further enhances our graph. To change *durations* into datetimes we can just add them all to the same date-time. It does not matter which date we chose. Since the range of our data occurs entirely within an hour, only the minutes information will display in the graph.
+
+```{r}
+lakers$minutes <- ymd("2008-01-01") + lakers$time
+qplot(minutes, data = lakers, geom = "histogram", binwidth = 60)
+```
+We see that the number of plays peaks within each of the four periods and then plummets at the beginning of the next period. The most plays occur in the last minute of the game. Perhaps any shot is worth taking at this point or there’s less of an incentive not to foul other players. Fewer plays occur in overtime, since not all games go to overtime.
+Now lets look more closely at just one basketball game: the game played against the Boston Celtics on Christmas of 2008. We can quickly model the amounts of time that occurred between each shot attempt.
+
+```{r}
+game1 <- lakers[lakers$date == "20081225",]
+attempts <- game1[game1$etype == "shot",]
+```
+
+The waiting times between shots will be the timespan that occurs between each shot attempt. Since we have recorded the time of each shot attempt as a duration (above), we can record the differences by subtracting the two durations. This automatically creates a new duration whose length is equal to the difference between the first two durations.
+
+```{r}
+attempts$wait <- c(attempts$time[1], 
+                   diff(attempts$time))
+
+qplot(as.integer(wait), data = attempts, geom = "histogram", binwidth = 2)
+```
+```{r}
+library(plyr)
+```
+```{r}
+game1_scores <- ddply(game1, "team", transform, score = cumsum(points))
+game1_scores <- game1_scores[game1_scores$team != "OFF",]
+qplot(ymd("2008-01-01") + time, score, data = game1_scores,geom = "line", colour = team)
+```
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 

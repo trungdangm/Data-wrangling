@@ -1,0 +1,60 @@
+---
+title: "Reshaping Data"
+author: "Minh Trung DANG"
+date: "13/01/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+Basics
+
+
+
+Wide, or unstacked data is presented with each different data variable in a separate column.
+
+Narrow, stacked, or long data is presented with one column containing all the values and another column listing the context of the value.
+
+To create a wide data
+```{r}
+df_wide <- data.frame(Person = c("Bob","Alice","Steve","Jack"),
+                      Age =  c(32,24,64, 55),
+                      Weight= c (168,150,144,180),
+                      Height =  c(180,175,165,176))
+
+df_wide 
+```
+
+
+A. Converting wide data to long format
+
+```{r}
+library(tidyr)
+```
+
+```{r}
+df_long <- df_wide %>% 
+  pivot_longer(cols = c("Age","Weight","Height"), 
+               names_to = "type", 
+               values_to = "value")
+
+df_long
+```
+
+
+B. Converting the wide data to long data
+
+```{r}
+to_df_wide <- df_long %>% 
+  pivot_wider(names_from = type, 
+              values_from = value) 
+
+to_df_wide 
+```
+
+
+
+

@@ -1,0 +1,60 @@
+---
+title: "Tidytrick-Replacing string patterns (regrouping categorical variables)"
+author: "Minh Trung DANG"
+date: "25/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Cheking rows with a specific pattern
+
+```{r}
+library(readr)
+library(tidyverse)
+```
+
+```{r}
+incomeUS <- read_csv("adultincome.csv")
+```
+
+```{r}
+incomeUS %>% 
+  group_by(marital.status) %>% 
+  summarise(counts = n()) %>% 
+  arrange(desc(counts))
+```
+
+we can put all the married people in the same group
+
+This varaiable have 7 labels, three of them are:
+
+- Married-AF-spouse: Married armed forces spouse  
+
+- Married-civ-spouse: Married civilian spouse  
+
+- Married-spouse-absent : Married but the spouse was absent
+
+Both levels can be grouped into the group "Married".  
+
+Replace rows containing either "Married-AF-spouse", "Married-civ-spouse", or "Married-spouse-absent" by "Married".
+
+
+```{r}
+patterns <- c("Married-AF-spouse|Married-civ-spouse|Married-spouse-absent")
+incomeUS <- incomeUS %>% 
+  mutate(marital = stringr::str_replace_all(marital.status, patterns, "Married"))
+```
+
+To check the resulting column
+
+```{r}
+incomeUS %>% 
+  group_by(marital) %>% 
+  summarise(counts = n()) %>% 
+  arrange(desc(counts))
+```
+
+

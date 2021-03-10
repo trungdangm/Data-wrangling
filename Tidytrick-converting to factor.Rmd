@@ -1,0 +1,63 @@
+---
+title: "Tidytrick1-Converting multiple character columns to factor"
+date: "28/12/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(readr)
+adult <- read_csv("adultincome.csv")
+```
+
+
+```{r}
+str(adult)
+```
+
+```{r}
+library(tidyverse)
+```
+
+Method 1: Using mutate_if 
+```{r}
+adult1 <- adult %>%
+  mutate_if(is.character,as.factor)
+
+str(adult1)
+```
+
+
+Method 2: Using mutate_each_
+
+```{r}
+cols <- c("workclass", "education", "marital.status", "occupation","relationship", 
+          "race","sex", "native.country","income")
+adult2 <- adult %>% 
+  mutate_each_(funs(factor(.)),cols)
+
+
+str(adult2)
+```
+
+
+Method 3: Using lappy function
+
+```{r}
+adult3 <- adult
+```
+
+```{r}
+adult3[cols] <- lapply(adult3[cols], factor)
+```
+
+```{r}
+str(adult3)
+```
+
+
+
+

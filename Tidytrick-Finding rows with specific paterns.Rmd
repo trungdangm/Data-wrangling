@@ -1,0 +1,60 @@
+---
+title: "Tidytrick-Finding rows with a specific pattern"
+author: "Minh Trung DANG"
+date: "25/05/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Checking rows with a specific pattern
+
+```{r}
+library(readr)
+library(tidyverse)
+library(purrr)
+```
+
+```{r}
+adult <- read_csv("adultincome.csv")
+```
+
+We are looking for the total number of rows containing the patter '?'
+
+```{r}
+missing_count_tbl <- purrr::map_df(adult, ~ stringr::str_detect(., pattern = "\\?")) %>%
+  rowSums() %>%
+  tbl_df() %>%
+  filter(value > 0) %>%
+  summarize(missing_count = n()) 
+
+missing_count_tbl
+```
+In the data, there are 2399 rows that contain the pattern "?".
+
+To locate columns that have this pattern
+
+```{r}
+count.NA.percolumn <- plyr::ldply(adult, function(c) sum(c == "?"))
+count.NA.percolumn
+``` 
+
+There are 3 columns that contain "?" as NA: workclass, occupation, and native.country.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
